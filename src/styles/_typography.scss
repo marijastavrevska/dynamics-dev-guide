@@ -1,0 +1,27 @@
+@use 'variables' as v;
+
+// Syntax highlighting classes (used inside code-block innerHTML)
+.kw      { color: v.$red; font-weight: 600; }
+.type    { color: #0055bb; }
+.str     { color: #166534; }
+.comment { color: #aaa; font-style: italic; }
+.num     { color: #6d28d9; }
+.func    { color: v.$red-dark; }
+.var     { color: v.$black2; }
+.attr    { color: #0066aa; }
+
+// Inline code (inside body text / callout innerHTML)
+code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  background: v.$code-bg;
+  border: 1px solid v.$border;
+  padding: 1px 6px;
+  border-radius: 3px;
+  color: v.$red;
+}
+
+// Base paragraph reset for content areas
+p {
+  line-height: 1.7;
+}

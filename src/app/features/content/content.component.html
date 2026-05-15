@@ -1,0 +1,9 @@
+<main class="content">
+  <div class="content-inner">
+    @if (isWelcome) {
+      <app-welcome-pane [developments]="developments()" />
+    } @else if (activeDevelopment) {
+      <app-development-pane [development]="activeDevelopment" />
+    }
+  </div>
+</main>

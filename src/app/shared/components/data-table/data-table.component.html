@@ -1,0 +1,20 @@
+<div class="table-wrapper">
+  <table>
+    <thead>
+      <tr>
+        @for (h of headers(); track h) {
+          <th>{{ h }}</th>
+        }
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of rows(); track $index) {
+        <tr>
+          @for (cell of row; track $index) {
+            <td [innerHTML]="cell"></td>
+          }
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>

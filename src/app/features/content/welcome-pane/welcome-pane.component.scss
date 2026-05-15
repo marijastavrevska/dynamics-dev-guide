@@ -1,0 +1,146 @@
+@use '../../../../styles/variables' as v;
+
+.welcome-pane {
+  width: 100%;
+}
+
+.welcome-header {
+  margin-bottom: 48px;
+}
+
+.welcome-tag {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: v.$red;
+  background: v.$red-dim;
+  border: 1px solid v.$red-border;
+  padding: 4px 10px;
+  border-radius: 20px;
+  margin-bottom: 16px;
+}
+
+h2 {
+  font-family: 'Clash Display', sans-serif;
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+  color: v.$black;
+  margin: 0 0 12px;
+}
+
+.welcome-desc {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  color: v.$muted;
+  max-width: 600px;
+  line-height: 1.7;
+  margin: 0;
+}
+
+.cards-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: v.$red;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: v.$border;
+  }
+}
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.dev-card {
+  background: v.$off;
+  border: 1px solid v.$border;
+  border-radius: 10px;
+  padding: 20px 22px;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &:hover:not(.dev-card--placeholder) {
+    border-color: v.$red;
+    box-shadow: 0 2px 12px rgba(216, 42, 29, 0.08);
+  }
+
+  &--placeholder {
+    opacity: 0.45;
+    cursor: default;
+    border-style: dashed;
+  }
+}
+
+.card-module {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: v.$red;
+  background: v.$red-dim;
+  border: 1px solid v.$red-border;
+  padding: 2px 7px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.card-title {
+  font-family: 'Clash Display', sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  color: v.$black;
+  margin: 0 0 8px;
+  line-height: 1.3;
+}
+
+.card-desc {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  color: v.$muted;
+  line-height: 1.6;
+  margin: 0 0 16px;
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.card-date {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #aaa;
+}
+
+.card-tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.card-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: #888;
+  background: v.$off2;
+  border: 1px solid v.$border;
+  padding: 1px 6px;
+  border-radius: 3px;
+}

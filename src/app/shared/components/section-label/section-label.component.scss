@@ -1,0 +1,20 @@
+@use '../../../../styles/variables' as v;
+
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: v.$red;
+  margin: 40px 0 14px;
+
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: v.$border;
+  }
+}

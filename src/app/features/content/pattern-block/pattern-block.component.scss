@@ -1,0 +1,33 @@
+@use '../../../../styles/variables' as v;
+
+.pattern-block {
+  margin-bottom: 48px;
+}
+
+.pattern-body {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  color: #444;
+  line-height: 1.8;
+  margin-bottom: 14px;
+}
+
+.sub-section {
+  margin-bottom: 32px;
+}
+
+h3.sub {
+  font-family: 'Clash Display', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: v.$black;
+  margin: 32px 0 10px;
+}
+
+.sub-body {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  color: #444;
+  line-height: 1.8;
+  margin-bottom: 14px;
+}

@@ -1,0 +1,36 @@
+<div class="welcome-pane">
+  <header class="welcome-header">
+    <span class="welcome-tag">D365 F&O</span>
+    <h2>Developer Knowledge Base</h2>
+    <p class="welcome-desc">
+      A curated collection of Dynamics 365 Finance &amp; Operations development patterns,
+      code references, and architectural decisions — ready to reference at any point in your project.
+    </p>
+  </header>
+
+  <div class="cards-label">All Developments</div>
+
+  <div class="cards-grid">
+    @for (dev of developments(); track dev.id) {
+      <div class="dev-card" (click)="navigate(dev.id)">
+        <span class="card-module">{{ dev.module }}</span>
+        <h3 class="card-title">{{ dev.title }}</h3>
+        <p class="card-desc">{{ dev.description }}</p>
+        <div class="card-footer">
+          <span class="card-date">{{ dev.date }}</span>
+          <div class="card-tags">
+            @for (tag of dev.tags.slice(0, 2); track tag) {
+              <span class="card-tag">{{ tag }}</span>
+            }
+          </div>
+        </div>
+      </div>
+    }
+
+    <div class="dev-card dev-card--placeholder">
+      <span class="card-module">Coming Soon</span>
+      <h3 class="card-title">Next Development</h3>
+      <p class="card-desc">The next documented development will appear here once added to the knowledge base.</p>
+    </div>
+  </div>
+</div>

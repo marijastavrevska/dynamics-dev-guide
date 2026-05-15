@@ -1,0 +1,17 @@
+@use '../../../styles/variables' as v;
+
+:host {
+  flex: 1;
+  overflow-y: auto;
+  background: v.$white;
+  display: block;
+}
+
+.content {
+  min-height: 100%;
+}
+
+.content-inner {
+  max-width: 880px;
+  padding: 52px 64px 80px;
+}

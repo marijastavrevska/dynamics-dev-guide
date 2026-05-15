@@ -1,0 +1,56 @@
+@use '../../../../styles/variables' as v;
+
+.code-block {
+  margin-bottom: 20px;
+}
+
+.code-label {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: v.$muted;
+  margin-bottom: 4px;
+}
+
+.pre-wrapper {
+  position: relative;
+}
+
+.copy-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  background: transparent;
+  border: 1px solid v.$red;
+  color: v.$red;
+  border-radius: 4px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  z-index: 1;
+
+  &:hover {
+    background: v.$red-dim;
+  }
+}
+
+pre {
+  background: v.$code-bg;
+  border: 1px solid v.$border;
+  border-radius: 8px;
+  padding: 20px 22px;
+  overflow-x: auto;
+  margin: 0;
+
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.8;
+    color: v.$black2;
+    white-space: pre;
+  }
+}
