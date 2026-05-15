@@ -1,1 +1,400 @@
-[]
+[
+  {
+    "id": "billing-rules",
+    "title": "Contract Status for Billing Rules",
+    "module": "Project & Accounting",
+    "date": "May 2026",
+    "description": "Workbench form for bulk-updating milestone and unit-of-delivery billing line statuses across multiple contracts in a single confirmed transaction.",
+    "tags": ["multiselect", "security", "edit-methods", "singleton-state", "delegate", "psa"],
+    "objects": [
+      {
+        "type": "Form",
+        "name": "APV_UpdateContractStatus",
+        "description": "Main workbench — multi-select header, billing lines grid, footer totals, Mark Selected button."
+      },
+      {
+        "type": "Class",
+        "name": "APV_PSAContractStatusFormState",
+        "description": "Session singleton holding all pending-change buffers and the pre-fetched locked RecId set."
+      },
+      {
+        "type": "Class · static",
+        "name": "APV_PSAContractStatusService",
+        "description": "Owns the ttsbegin/ttscommit block — validates and commits the assembled buffer in one transaction."
+      },
+      {
+        "type": "Class · static",
+        "name": "APV_PSAContractStatusBuilder",
+        "description": "Merges the mark-as-completed and units-ready buffers into a typed Map<RecId, Commit>."
+      },
+      {
+        "type": "Class · data",
+        "name": "APV_PSAContractStatusCommit",
+        "description": "DTO carrying lineType, markAsCompleted, and unitsReady for a single billing line."
+      },
+      {
+        "type": "Class · static",
+        "name": "APV_PSAContractStatusHelper",
+        "description": "Locked-row detection — single-row check and batch pre-fetch variant, plus row background color."
+      },
+      {
+        "type": "Class · final",
+        "name": "UpdateContractStatusBRVisibilityManager",
+        "description": "Subscribes to SysMenuNavigationObjectFactory delegate to hide the menu item when the parameter is OFF."
+      },
+      {
+        "type": "Table Extension",
+        "name": "ProjParameters_AXM_APAVE_Extension",
+        "description": "Adds APV_AutomatizeContractStatus field and a post-init handler that gates control visibility via SecurityRights."
+      }
+    ],
+    "patterns": [
+      {
+        "title": "Pattern — Convenience helper on a table extension",
+        "body": "When a feature is gated by a field on a parameters table, avoid repeating the field lookup across every call site. Add a named static method to the table extension so all callers go through one compile-checked point.",
+        "subSections": [
+          {
+            "codeBlocks": [
+              {
+                "label": "X++ — Table extension static helper",
+                "code": "[<span class=\"attr\">ExtensionOf</span>(<span class=\"func\">tableStr</span>(ProjParameters))]\n<span class=\"kw\">final class</span> <span class=\"type\">ProjParameters_AXM_APAVE_Extension</span>\n{\n    <span class=\"kw\">public static boolean</span> <span class=\"func\">isAutomatizeContractStatusEnabled</span>()\n    {\n        <span class=\"kw\">return</span> <span class=\"type\">ProjParameters</span>::<span class=\"func\">find</span>().APV_AutomatizeContractStatus == <span class=\"type\">NoYes</span>::Yes;\n    }\n}"
+              }
+            ],
+            "callouts": [
+              {
+                "type": "why",
+                "title": "What this achieves",
+                "body": "A single named entry point for reading the flag. Any caller writes <code>ProjParameters::isAutomatizeContractStatusEnabled()</code> — readable, refactor-safe, and easy to find with cross-reference. If the field name ever changes, only this method needs updating."
+              },
+              {
+                "type": "tip",
+                "title": "Reuse this pattern whenever",
+                "body": "Any feature flag, parameter field, or configuration value that is checked in more than one place. One method, one field reference, one place to change."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Pattern — Security-driven visibility on a form control",
+        "body": "When a control exists on a form the user already has access to, but the control itself should only be visible or editable based on a specific security privilege, use a PostHandlerFor on the form init combined with SecurityRights to drive the control's visible() and allowEdit() properties at runtime.",
+        "subSections": [
+          {
+            "codeBlocks": [
+              {
+                "label": "X++ — PostHandlerFor driving control visibility",
+                "code": "[<span class=\"attr\">PostHandlerFor</span>(<span class=\"func\">formStr</span>(ProjParameters), <span class=\"func\">formMethodStr</span>(ProjParameters, init))]\n<span class=\"kw\">public static void</span> <span class=\"func\">ProjParameters_Post_init</span>(<span class=\"type\">XppPrePostArgs</span> <span class=\"var\">args</span>)\n{\n    <span class=\"type\">FormRun</span>             <span class=\"var\">formRun</span> = <span class=\"var\">args</span>.<span class=\"func\">getThis</span>() <span class=\"kw\">as</span> <span class=\"type\">FormRun</span>;\n    <span class=\"type\">FormCheckBoxControl</span> <span class=\"var\">ctrl</span>    = <span class=\"var\">formRun</span>.<span class=\"func\">control</span>(\n        <span class=\"var\">formRun</span>.<span class=\"func\">controlId</span>(<span class=\"str\">'APV_AutomatizeContractStatus'</span>)) <span class=\"kw\">as</span> <span class=\"type\">FormCheckBoxControl</span>;\n\n    <span class=\"kw\">if</span> (<span class=\"var\">ctrl</span>)\n    {\n        <span class=\"type\">SecurityRights</span> <span class=\"var\">rights</span>      = <span class=\"type\">SecurityRights</span>::<span class=\"func\">construct</span>();\n        <span class=\"type\">AccessRight</span>    <span class=\"var\">accessRight</span> = <span class=\"var\">rights</span>.<span class=\"func\">formControlAccessRight</span>(\n            <span class=\"func\">formStr</span>(ProjParameters),\n            <span class=\"func\">identifierStr</span>(APV_AutomatizeContractStatus));\n\n        <span class=\"var\">ctrl</span>.<span class=\"func\">visible</span>(<span class=\"var\">accessRight</span>   >= <span class=\"type\">AccessRight</span>::View);\n        <span class=\"var\">ctrl</span>.<span class=\"func\">allowEdit</span>(<span class=\"var\">accessRight</span> >= <span class=\"type\">AccessRight</span>::Edit);\n    }\n}"
+              }
+            ],
+            "callouts": [
+              {
+                "type": "why",
+                "title": "What this achieves",
+                "body": "The control is invisible to users without View access — they cannot see it exists. Users with View but not Edit see it but cannot change it. Only users with Edit access can toggle it. All of this without touching the standard form's AOT design."
+              },
+              {
+                "type": "how",
+                "title": "How PostHandlerFor works",
+                "body": "<code>PostHandlerFor</code> runs your static method automatically after the target form method completes. <code>args.getThis()</code> returns the live <code>FormRun</code> instance — so you get a reference to the actual open form, its controls, and its current state. No override, no CoC chain needed."
+              },
+              {
+                "type": "how",
+                "title": "How SecurityRights works",
+                "body": "<code>SecurityRights::construct()</code> gives a snapshot of the current user's effective permissions. <code>formControlAccessRight(formStr, identifierStr)</code> returns an <code>AccessRight</code> enum value for that specific control. Compare with <code>>=</code> — so <code>>= AccessRight::Edit</code> also covers FullControl."
+              },
+              {
+                "type": "warn",
+                "title": "⚠️ Always null-check the control",
+                "body": "If a future update renames or removes the control, <code>formRun.control()</code> returns null rather than throwing. Without the null guard, the form fails to open entirely. Always guard control lookups by name."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Pattern — Menu item gated by a database parameter",
+        "body": "D365 security handles privilege-based visibility automatically. It cannot conditionally hide a menu item based on a database flag. To add a second condition — such as a parameters table toggle — subscribe to the SysMenuNavigationObjectFactory delegate.",
+        "subSections": [
+          {
+            "codeBlocks": [
+              {
+                "label": "X++ — Delegate subscription for menu item visibility",
+                "code": "<span class=\"kw\">final class</span> <span class=\"type\">UpdateContractStatusBRVisibilityManager</span>\n{\n    [<span class=\"attr\">SubscribesTo</span>(\n        <span class=\"func\">classstr</span>(SysMenuNavigationObjectFactory),\n        <span class=\"func\">staticdelegatestr</span>(SysMenuNavigationObjectFactory, checkAddSubMenuDelegate)),\n     <span class=\"attr\">Hookable</span>(<span class=\"kw\">false</span>)]\n    <span class=\"kw\">internal static void</span> <span class=\"func\">menuItemVisibilityHandler</span>(\n        <span class=\"type\">SysDictMenu</span>     <span class=\"var\">_rootMenu</span>,\n        <span class=\"type\">SysDictMenu</span>     <span class=\"var\">_subMenu</span>,\n        <span class=\"type\">SysBoxedBoolean</span> <span class=\"var\">_subMenuVisibility</span>)\n    {\n        <span class=\"kw\">if</span> (<span class=\"var\">_subMenu</span>.<span class=\"func\">isMenuItem</span>())\n        {\n            <span class=\"kw\">var</span> <span class=\"var\">meta</span> = <span class=\"var\">_subMenu</span>.<span class=\"func\">GetMenuItemMetaElement</span>();\n            <span class=\"kw\">if</span> (<span class=\"var\">meta</span> != <span class=\"kw\">null</span>)\n            {\n                <span class=\"kw\">switch</span> (<span class=\"var\">meta</span>.Name)\n                {\n                    <span class=\"kw\">case</span> <span class=\"func\">menuItemDisplayStr</span>(APV_UpdateContractStatus):\n                        <span class=\"var\">_subMenuVisibility</span>.value =\n                            <span class=\"type\">ProjParameters</span>::<span class=\"func\">find</span>().APV_AutomatizeContractStatus == <span class=\"type\">NoYes</span>::Yes;\n                        <span class=\"kw\">break</span>;\n                }\n            }\n        }\n    }\n}"
+              }
+            ],
+            "callouts": [
+              {
+                "type": "why",
+                "title": "What this achieves",
+                "body": "The menu item disappears from navigation entirely when the parameter is OFF — not greyed out, fully hidden. Both conditions must be true for it to appear: parameter ON and privilege assigned. The delegate handles the parameter side; D365 handles the privilege side automatically."
+              },
+              {
+                "type": "how",
+                "title": "How the delegate works",
+                "body": "<code>checkAddSubMenuDelegate</code> fires for every menu item the framework renders during navigation build. <code>_subMenuVisibility</code> is a boxed boolean passed by reference — setting <code>.value = false</code> removes the item. The <code>switch</code> on <code>meta.Name</code> lets one class cover multiple menu items cheaply. <code>Hookable(false)</code> prevents CoC wrapping."
+              },
+              {
+                "type": "danger",
+                "title": "🚨 This is not a security control",
+                "body": "This delegate only hides the item from the UI. A user who constructs the direct URL can still navigate to the form. Real access control comes from the security privilege on the menu item in AOT. Never use this pattern as a substitute for a privilege."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Pattern — Multi-select lookup on a string control",
+        "body": "SysLookupMultiSelectCtrl wraps an existing FormStringControl and gives it multi-selection behaviour at runtime. No new AOT control type is needed. The controller stores the selection internally and returns a container of RecIds via get().",
+        "subSections": [
+          {
+            "title": "Lazy initialization",
+            "body": "The controller is built on first need, not in init(). This avoids the control not yet being available during early form lifecycle methods.",
+            "codeBlocks": [
+              {
+                "label": "X++ — Lazy init with double null guard",
+                "code": "<span class=\"kw\">private void</span> <span class=\"func\">apv_ensureMultiSelect</span>()\n{\n    <span class=\"kw\">if</span> (<span class=\"var\">multiSelectCtrl</span> != <span class=\"kw\">null</span>)\n        <span class=\"kw\">return</span>; <span class=\"comment\">// already built — free exit</span>\n\n    <span class=\"type\">FormStringControl</span> <span class=\"var\">contractIdCtrl</span> =\n        <span class=\"kw\">this</span>.<span class=\"func\">control</span>(<span class=\"kw\">this</span>.<span class=\"func\">controlId</span>(<span class=\"str\">'APV_ContractId'</span>)) <span class=\"kw\">as</span> <span class=\"type\">FormStringControl</span>;\n\n    <span class=\"kw\">if</span> (<span class=\"var\">contractIdCtrl</span> == <span class=\"kw\">null</span>)\n        <span class=\"kw\">return</span>; <span class=\"comment\">// control not ready yet — caller will retry</span>\n\n    <span class=\"type\">Query</span>                <span class=\"var\">q</span>    = <span class=\"kw\">new</span> <span class=\"type\">Query</span>();\n    <span class=\"type\">QueryBuildDataSource</span> <span class=\"var\">qbds</span> = <span class=\"var\">q</span>.<span class=\"func\">addDataSource</span>(<span class=\"func\">tableNum</span>(ProjInvoiceTable));\n    <span class=\"var\">qbds</span>.<span class=\"func\">addSelectionField</span>(<span class=\"func\">fieldNum</span>(ProjInvoiceTable, ProjInvoiceProjId));\n    <span class=\"var\">qbds</span>.<span class=\"func\">addSortField</span>(<span class=\"func\">fieldNum</span>(ProjInvoiceTable, ProjInvoiceProjId));\n\n    <span class=\"var\">multiSelectCtrl</span> = <span class=\"type\">SysLookupMultiSelectCtrl</span>::<span class=\"func\">constructWithQuery</span>(\n        <span class=\"var\">element</span>, <span class=\"var\">contractIdCtrl</span>, <span class=\"var\">q</span>);\n}"
+              }
+            ],
+            "callouts": [
+              {
+                "type": "why",
+                "title": "Why lazy and not in init()",
+                "body": "During <code>init()</code> the form controls may not yet be fully rendered — calling <code>controlId()</code> too early returns 0 and the cast to <code>FormStringControl</code> returns null silently. Deferring to first use guarantees the form is ready. The first null guard makes every subsequent call free — no rebuild, no second query."
+              },
+              {
+                "type": "how",
+                "title": "How constructWithQuery works",
+                "body": "The query defines what appears in the multi-select dropdown. The controller binds to the string control and takes ownership of its lookup event. When the user opens it, the controller runs the query and renders a checkbox list. Selected RecIds are held internally — the string control only shows the display labels."
+              }
+            ]
+          },
+          {
+            "title": "Resolving RecIds to business key strings",
+            "body": "After the user confirms a selection, multiSelectCtrl.get() returns a container of RecIds. These are resolved back to ProjInvoiceProjId strings and stored for use in the data source query range.",
+            "codeBlocks": [
+              {
+                "label": "X++ — apv_resolveSelectedContractIds()",
+                "code": "<span class=\"kw\">public void</span> <span class=\"func\">apv_resolveSelectedContractIds</span>()\n{\n    <span class=\"type\">container</span>        <span class=\"var\">result</span>;\n    <span class=\"type\">container</span>        <span class=\"var\">selectedRecIds</span>;\n    <span class=\"type\">ProjInvoiceTable</span> <span class=\"var\">projInvoiceTable</span>;\n\n    <span class=\"var\">m_selectedContractIds</span> = <span class=\"func\">conNull</span>();\n    <span class=\"kw\">this</span>.<span class=\"func\">apv_ensureMultiSelect</span>();\n\n    <span class=\"kw\">if</span> (<span class=\"var\">multiSelectCtrl</span> == <span class=\"kw\">null</span>)\n        <span class=\"kw\">return</span>;\n\n    <span class=\"var\">selectedRecIds</span> = <span class=\"var\">multiSelectCtrl</span>.<span class=\"func\">get</span>(); <span class=\"comment\">// container of RecIds</span>\n\n    <span class=\"kw\">for</span> (<span class=\"type\">int</span> <span class=\"var\">i</span> = <span class=\"num\">1</span>; <span class=\"var\">i</span> <= <span class=\"func\">conLen</span>(<span class=\"var\">selectedRecIds</span>); <span class=\"var\">i</span>++)\n    {\n        <span class=\"kw\">select firstonly</span> ProjInvoiceProjId <span class=\"kw\">from</span> <span class=\"var\">projInvoiceTable</span>\n            <span class=\"kw\">where</span> <span class=\"var\">projInvoiceTable</span>.RecId == <span class=\"func\">conPeek</span>(<span class=\"var\">selectedRecIds</span>, <span class=\"var\">i</span>);\n\n        <span class=\"kw\">if</span> (<span class=\"var\">projInvoiceTable</span>.ProjInvoiceProjId)\n            <span class=\"var\">result</span> += [<span class=\"var\">projInvoiceTable</span>.ProjInvoiceProjId];\n    }\n\n    <span class=\"var\">m_selectedContractIds</span> = <span class=\"var\">result</span>;\n}"
+              }
+            ],
+            "callouts": [
+              {
+                "type": "why",
+                "title": "Why resolve to strings and not keep RecIds",
+                "body": "The data source query range filters on <code>ProjInvoiceProjId</code> — the natural business key — not on <code>ProjInvoiceTable.RecId</code>. Storing strings means the range-building logic is clean and each value is directly usable in <code>SysQuery::value()</code> calls without a join."
+              }
+            ]
+          },
+          {
+            "title": "Applying the selection as a query range",
+            "body": "The data source executeQuery() applies a different range strategy depending on how many contracts are selected.",
+            "codeBlocks": [
+              {
+                "label": "X++ — Three-strategy range in executeQuery()",
+                "code": "<span class=\"kw\">if</span> (<span class=\"func\">conLen</span>(<span class=\"var\">m_selectedContractIds</span>) == <span class=\"num\">0</span>)\n    <span class=\"var\">m_oRangeContract</span>.<span class=\"func\">value</span>(<span class=\"type\">SysQuery</span>::<span class=\"func\">valueEmptyString</span>()); <span class=\"comment\">// show nothing</span>\n<span class=\"kw\">else if</span> (<span class=\"func\">conLen</span>(<span class=\"var\">m_selectedContractIds</span>) == <span class=\"num\">1</span>)\n    <span class=\"var\">m_oRangeContract</span>.<span class=\"func\">value</span>(<span class=\"func\">conPeek</span>(<span class=\"var\">m_selectedContractIds</span>, <span class=\"num\">1</span>));\n<span class=\"kw\">else</span>\n    <span class=\"var\">m_oRangeContract</span>.<span class=\"func\">value</span>(\n        <span class=\"var\">element</span>.<span class=\"func\">apv_buildMultiValueRange</span>(<span class=\"var\">m_selectedContractIds</span>));\n\n<span class=\"kw\">super</span>();\n<span class=\"var\">element</span>.<span class=\"func\">clearCache</span>();\n<span class=\"var\">element</span>.<span class=\"func\">refreshTotals</span>();"
+              }
+            ],
+            "callouts": [
+              {
+                "type": "why",
+                "title": "Why three cases",
+                "body": "The zero case is critical — an empty range string would show all records, not nothing. <code>SysQuery::valueEmptyString()</code> produces a special value the engine interprets as match-nothing, resulting in an empty grid. This prevents accidental mass operations on unfiltered data."
+              },
+              {
+                "type": "how",
+                "title": "How comma-separated ranges work",
+                "body": "Setting a <code>QueryBuildRange</code> value to a comma-separated string like <code>\"C-001,C-002\"</code> translates to SQL <code>IN ('C-001','C-002')</code>. <code>SysQuery::value(str)</code> wraps each value in the correct quote format for the engine."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Pattern — Edit method as a two-way grid binding with staged writes",
+        "body": "An X++ edit method is a computed column on a form grid that supports both reading and writing. The framework calls it with _set = false to get the display value and _set = true when the user edits the cell. All writes must go to an in-memory buffer — never to the database directly.",
+        "subSections": [
+          {
+            "title": "Write branch — validation and buffer staging",
+            "codeBlocks": [
+              {
+                "label": "X++ — edit method write branch",
+                "code": "<span class=\"kw\">if</span> (<span class=\"var\">_set</span>)\n{\n    <span class=\"kw\">if</span> (<span class=\"var\">_contractLine</span>.LineType != <span class=\"type\">PSAContractLineType</span>::UOD)\n        <span class=\"kw\">return</span> <span class=\"num\">0</span>; <span class=\"comment\">// column does not apply to this line type</span>\n\n    <span class=\"type\">Qty</span> <span class=\"var\">invoiced</span>  = <span class=\"type\">PSAContractLineItemsServer</span>::<span class=\"func\">getContractLineInvoicedUnitsForUOD</span>(<span class=\"var\">_contractLine</span>.ContractLineNum);\n    <span class=\"type\">Qty</span> <span class=\"var\">remaining</span> = <span class=\"var\">_contractLine</span>.Units - <span class=\"var\">invoiced</span>;\n    <span class=\"kw\">if</span> (<span class=\"var\">remaining</span> < <span class=\"num\">0</span>) <span class=\"var\">remaining</span> = <span class=\"num\">0</span>;\n\n    <span class=\"kw\">if</span> (<span class=\"var\">_value</span> > <span class=\"var\">remaining</span>)\n    {\n        <span class=\"func\">warning</span>(<span class=\"func\">strFmt</span>(<span class=\"str\">\"@apv_:ExceedsMaxAllowedMsg\"</span>, <span class=\"var\">_value</span>, <span class=\"var\">remaining</span>));\n        <span class=\"kw\">return</span> <span class=\"var\">remaining</span>; <span class=\"comment\">// clamp — don't reject</span>\n    }\n    <span class=\"kw\">if</span> (<span class=\"var\">_value</span> < <span class=\"num\">0</span>)\n    {\n        <span class=\"func\">warning</span>(<span class=\"str\">\"@apv_:NegativeValueMsg\"</span>);\n        <span class=\"kw\">return</span> <span class=\"num\">0</span>;\n    }\n\n    <span class=\"comment\">// Stage in buffer — not written to DB</span>\n    <span class=\"type\">APV_PSAContractStatusFormState</span> <span class=\"var\">state</span> =\n        <span class=\"type\">APV_PSAContractStatusFormState</span>::<span class=\"func\">getOrCreate</span>(<span class=\"var\">element</span>);\n    <span class=\"var\">state</span>.apv_unitsReadyBuffer.<span class=\"func\">insert</span>(<span class=\"var\">_contractLine</span>.RecId, <span class=\"var\">_value</span>);\n\n    <span class=\"kw\">return</span> <span class=\"var\">_value</span>;\n}"
+              }
+            ],
+            "callouts": [
+              {
+                "type": "danger",
+                "title": "🚨 Never write to the database inside an edit method",
+                "body": "Edit methods are called on every grid refresh — sometimes multiple times per repaint. Writing to the DB here causes unintended commits on every scroll or selection change. All changes must be staged in an in-memory buffer and committed only after explicit user confirmation."
+              },
+              {
+                "type": "why",
+                "title": "Why clamp instead of reject on overrun",
+                "body": "Returning the clamped value snaps the cell to the maximum rather than showing stale data. The user sees the corrected value immediately and the warning explains why. Rejection would require the user to clear and retype, which is worse UX for a validation that has an obvious correct answer."
+              }
+            ]
+          },
+          {
+            "title": "Read branch — three-level priority",
+            "body": "When the framework requests a display value, the method checks three sources in priority order before computing a default.",
+            "codeBlocks": [
+              {
+                "label": "X++ — edit method read branch",
+                "code": "<span class=\"kw\">else</span>\n{\n    <span class=\"kw\">if</span> (<span class=\"var\">_contractLine</span>.LineType != <span class=\"type\">PSAContractLineType</span>::UOD)\n        <span class=\"kw\">return</span> <span class=\"num\">0</span>;\n\n    <span class=\"type\">APV_PSAContractStatusFormState</span> <span class=\"var\">state</span> =\n        <span class=\"type\">APV_PSAContractStatusFormState</span>::<span class=\"func\">getOrCreate</span>(<span class=\"var\">element</span>);\n\n    <span class=\"comment\">// Priority 1: pending edit from this session</span>\n    <span class=\"kw\">if</span> (<span class=\"var\">state</span>.apv_unitsReadyBuffer.<span class=\"func\">exists</span>(<span class=\"var\">_contractLine</span>.RecId))\n        <span class=\"kw\">return</span> <span class=\"func\">any2Real</span>(<span class=\"var\">state</span>.apv_unitsReadyBuffer.<span class=\"func\">lookup</span>(<span class=\"var\">_contractLine</span>.RecId));\n\n    <span class=\"comment\">// Priority 2: saved but not yet invoiced log entry</span>\n    <span class=\"type\">PSAUnitsUpdateLog</span> <span class=\"var\">unitsUpdateLog</span>;\n    <span class=\"kw\">select firstonly</span> AdditionalUnits <span class=\"kw\">from</span> <span class=\"var\">unitsUpdateLog</span>\n        <span class=\"kw\">where</span> <span class=\"var\">unitsUpdateLog</span>.ContractLineNum == <span class=\"var\">_contractLine</span>.ContractLineNum\n           && <span class=\"var\">unitsUpdateLog</span>.IsProposal      == <span class=\"type\">NoYes</span>::No\n           && <span class=\"var\">unitsUpdateLog</span>.IsInvoiced      == <span class=\"type\">NoYes</span>::No;\n\n    <span class=\"kw\">if</span> (<span class=\"var\">unitsUpdateLog</span>.AdditionalUnits)\n        <span class=\"kw\">return</span> <span class=\"var\">unitsUpdateLog</span>.AdditionalUnits;\n\n    <span class=\"comment\">// Priority 3: computed default — remaining = contracted - invoiced</span>\n    <span class=\"type\">Qty</span> <span class=\"var\">invoiced</span>  = <span class=\"type\">PSAContractLineItemsServer</span>::<span class=\"func\">getContractLineInvoicedUnitsForUOD</span>(<span class=\"var\">_contractLine</span>.ContractLineNum);\n    <span class=\"type\">Qty</span> <span class=\"var\">remaining</span> = <span class=\"var\">_contractLine</span>.Units - <span class=\"var\">invoiced</span>;\n    <span class=\"kw\">return</span> <span class=\"var\">remaining</span> < <span class=\"num\">0</span> ? <span class=\"num\">0</span> : <span class=\"var\">remaining</span>;\n}"
+              }
+            ],
+            "callouts": [
+              {
+                "type": "why",
+                "title": "Why three priorities",
+                "body": "Without priority 1, pending edits vanish on every grid refresh because the buffer is not checked. Without priority 2, a value saved in a previous session disappears when the form is reopened. Priority 3 is the safe default for a line never touched — show what is left to invoice rather than zero."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Pattern — Singleton form state for pending edits",
+        "body": "When multiple components of a form — edit methods, button handlers, data source methods — all need to share the same unsaved state, a singleton class acts as the single source of truth for that session.",
+        "subSections": [
+          {
+            "codeBlocks": [
+              {
+                "label": "X++ — Session singleton with getOrCreate",
+                "code": "<span class=\"kw\">class</span> <span class=\"type\">APV_PSAContractStatusFormState</span>\n{\n    <span class=\"kw\">public</span> <span class=\"type\">Map</span> apv_markAsCompletedBuffer; <span class=\"comment\">// RecId → 1/0</span>\n    <span class=\"kw\">public</span> <span class=\"type\">Map</span> apv_unitsReadyBuffer;      <span class=\"comment\">// RecId → real</span>\n    <span class=\"kw\">public</span> <span class=\"type\">Set</span> apv_lockedRecIds;           <span class=\"comment\">// pre-fetched locked lines</span>\n\n    <span class=\"kw\">private static</span> <span class=\"type\">APV_PSAContractStatusFormState</span> <span class=\"var\">instance</span>;\n\n    <span class=\"kw\">public void</span> <span class=\"func\">new</span>()\n    {\n        apv_markAsCompletedBuffer = <span class=\"kw\">new</span> <span class=\"type\">Map</span>(<span class=\"type\">Types</span>::Int64, <span class=\"type\">Types</span>::Enum);\n        apv_unitsReadyBuffer      = <span class=\"kw\">new</span> <span class=\"type\">Map</span>(<span class=\"type\">Types</span>::Int64, <span class=\"type\">Types</span>::Real);\n        apv_lockedRecIds          = <span class=\"kw\">new</span> <span class=\"type\">Set</span>(<span class=\"type\">Types</span>::Int64);\n    }\n\n    <span class=\"kw\">public static</span> <span class=\"type\">APV_PSAContractStatusFormState</span> <span class=\"func\">getOrCreate</span>(<span class=\"type\">FormRun</span> <span class=\"var\">_formRun</span>)\n    {\n        <span class=\"kw\">if</span> (<span class=\"var\">instance</span> == <span class=\"kw\">null</span>)\n            <span class=\"var\">instance</span> = <span class=\"kw\">new</span> <span class=\"type\">APV_PSAContractStatusFormState</span>();\n        <span class=\"kw\">return</span> <span class=\"var\">instance</span>;\n    }\n}"
+              }
+            ],
+            "callouts": [
+              {
+                "type": "why",
+                "title": "What this achieves",
+                "body": "Any method anywhere in the form reads and writes the same buffers via <code>getOrCreate(element)</code>. Pending edits survive grid refreshes, data source re-queries, and selection changes because they live entirely outside the grid. There is no risk of two separate copies of state diverging."
+              },
+              {
+                "type": "how",
+                "title": "Why static is safe here",
+                "body": "The static instance lives for the lifetime of the AOS session thread that opened the form. Each user opening the form gets their own thread — no cross-user contamination. When the form closes, the thread is released and the static variable goes with it. This would not be safe in a batch class or a shared service."
+              },
+              {
+                "type": "warn",
+                "title": "⚠️ Clear buffers after every commit",
+                "body": "After a successful commit, remove the submitted RecIds from both buffers. If you skip this, the edit method read branch returns the old staged value on the next refresh instead of reading the freshly committed database value — the grid appears not to have updated."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Pattern — Batch pre-fetch for lock detection",
+        "body": "When rows in a grid need to be checked for a condition that requires a database query, never query per row. Pre-fetch all results in one set-based query before the loop and use an in-memory Set for O(1) lookup inside the loop.",
+        "subSections": [
+          {
+            "title": "Single-row variant",
+            "body": "Use only when checking one isolated row — for example inside an edit method guard. Never inside a loop.",
+            "codeBlocks": [
+              {
+                "label": "X++ — Single-row lock check",
+                "code": "<span class=\"kw\">public static boolean</span> <span class=\"func\">isLineLocked</span>(<span class=\"type\">PSAContractLineItems</span> <span class=\"var\">_line</span>)\n{\n    <span class=\"type\">ProjProposalOnAcc</span> <span class=\"var\">proposalLine</span>;\n    <span class=\"type\">ProjProposalJour</span>  <span class=\"var\">proposalJour</span>;\n\n    <span class=\"kw\">select firstonly</span> RecId <span class=\"kw\">from</span> <span class=\"var\">proposalLine</span>\n        <span class=\"kw\">where</span> <span class=\"var\">proposalLine</span>.PSAContractLineNum == <span class=\"var\">_line</span>.ContractLineNum\n        <span class=\"kw\">join</span> <span class=\"var\">proposalJour</span>\n            <span class=\"kw\">where</span> <span class=\"var\">proposalJour</span>.ProposalId    == <span class=\"var\">proposalLine</span>.ProposalId\n               && <span class=\"var\">proposalJour</span>.ProjInvoiceId == <span class=\"str\">''</span>; <span class=\"comment\">// empty = unposted</span>\n\n    <span class=\"kw\">return</span> <span class=\"var\">proposalLine</span>.RecId != <span class=\"num\">0</span>;\n}"
+              }
+            ],
+            "callouts": [
+              {
+                "type": "how",
+                "title": "What makes a line locked",
+                "body": "A line is locked when it is referenced by a <code>ProjProposalOnAcc</code> record whose parent <code>ProjProposalJour</code> has an empty <code>ProjInvoiceId</code>. Empty means the proposal exists but has not been posted to a real invoice yet. Once posted, <code>ProjInvoiceId</code> is populated and the line is no longer locked."
+              }
+            ]
+          },
+          {
+            "title": "Batch variant — always use this in loops",
+            "codeBlocks": [
+              {
+                "label": "X++ — Pre-fetch then Set.in() inside loop",
+                "code": "<span class=\"comment\">// Called ONCE before the loop</span>\n<span class=\"type\">Set</span> <span class=\"var\">lockedRecIds</span> = <span class=\"type\">APV_PSAContractStatusHelper</span>::<span class=\"func\">preFetchLockedRecIds</span>(<span class=\"var\">contractIds</span>);\n\n<span class=\"kw\">while</span> (<span class=\"var\">listEnum</span>.<span class=\"func\">moveNext</span>())\n{\n    <span class=\"type\">RecId</span> <span class=\"var\">recId</span> = <span class=\"var\">listEnum</span>.<span class=\"func\">current</span>();\n\n    <span class=\"kw\">if</span> (<span class=\"var\">lockedRecIds</span>.<span class=\"func\">in</span>(<span class=\"var\">recId</span>)) <span class=\"comment\">// O(1) hash lookup — no DB call</span>\n    {\n        <span class=\"func\">warning</span>(<span class=\"func\">strFmt</span>(<span class=\"str\">\"@apv_:UnpostedInvoiceProposalMsg\"</span>, <span class=\"var\">line</span>.ContractLineNum));\n        <span class=\"kw\">continue</span>;\n    }\n    <span class=\"comment\">// process the line...</span>\n}"
+              }
+            ],
+            "callouts": [
+              {
+                "type": "danger",
+                "title": "🚨 Never call isLineLocked() inside a loop",
+                "body": "With 1,000+ billing lines, calling <code>isLineLocked()</code> per row generates 1,000+ database round trips. The form becomes unusably slow and can timeout. Always call <code>preFetchLockedRecIds()</code> once before the loop, then use <code>Set.in()</code> inside it."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Pattern — Staged commit with confirmation dialog",
+        "body": "No data is written until the user explicitly confirms. The button handler stages and validates, shows a summary dialog, then hands a fully-assembled commit buffer to the service layer. The service owns the transaction. This keeps ttsbegin/ttscommit out of UI code entirely.",
+        "subSections": [
+          {
+            "title": "Commit flow",
+            "flowSteps": [
+              {
+                "title": "MultiSelectionHelper iterates the grid selection",
+                "body": "Counts milestone and UOD lines. Populates state buffers with defaults for any line not yet manually edited in the session."
+              },
+              {
+                "title": "Box::yesNo() — confirmation with counts",
+                "body": "Shows a summary of what will change before anything is written. If the user clicks No, the method returns immediately with no side effects."
+              },
+              {
+                "title": "APV_PSAContractStatusBuilder::buildCommitBuffer()",
+                "body": "Merges the two state buffers into a single typed Map<RecId, APV_PSAContractStatusCommit>. Only RecIds in the current grid selection are included — edits to unselected lines are ignored."
+              },
+              {
+                "title": "APV_PSAContractStatusService::validateAndUpdate()",
+                "body": "Opens ttsbegin/ttscommit. Updates ProjOnAccTrans.IsMilestoneComplete for milestone lines. Calls PSAContractLineItemsServer::updateUODUnits() for UOD lines. Any unit overrun calls ttsabort — the entire batch rolls back."
+              },
+              {
+                "title": "Post-commit cleanup",
+                "body": "Removes committed RecIds from both state buffers. Calls research(), clearCache(), and refreshTotals() to bring the grid and footer back in sync with the database."
+              }
+            ],
+            "callouts": [
+              {
+                "type": "why",
+                "title": "Why the transaction lives only in the service",
+                "body": "Button handler code deals with UI — dialog boxes, selection iteration, buffer population. Mixing <code>ttsbegin</code> into UI code risks holding a transaction open while waiting for user input, which locks records. The service receives a complete, UI-free commit buffer and opens and closes the transaction in the tightest possible scope."
+              },
+              {
+                "type": "warn",
+                "title": "⚠️ ttsabort rolls back the entire batch",
+                "body": "If any single UOD line fails the overrun check, the whole batch is aborted — not just that line. A partial commit would leave some lines updated and others not, with no indication of which. Fail all or commit all."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Pattern — Security privileges summary",
+        "subSections": [
+          {
+            "tableData": {
+              "headers": ["Privilege", "Role", "What it gates"],
+              "rows": [
+                [
+                  "<code>APAVE_PRIME_UpdateContractStatusforBillingRule</code>",
+                  "APAVE_SW_Project Billing Coordinator",
+                  "Access to the form, use of Mark Selected button, editing grid fields"
+                ],
+                [
+                  "<code>APAVE_PRIME_AutomatizeBillingRuleParameter</code>",
+                  "APAVE_SW_Finance Administrator",
+                  "Editing the APV_AutomatizeContractStatus checkbox on ProjParameters"
+                ]
+              ]
+            },
+            "callouts": [
+              {
+                "type": "tip",
+                "title": "✅ Neither privilege touches ProjTable",
+                "body": "The customization is intentionally scoped to billing rule management only. Users cannot use these privileges to modify the project itself — the privileges have no relation to ProjTable."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]
