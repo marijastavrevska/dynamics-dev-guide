@@ -1,0 +1,62 @@
+@use '../../../../styles/variables' as v;
+
+.flow-wrapper {
+  position: relative;
+  margin: 14px 0 28px;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 13px;
+    top: 28px;
+    bottom: 28px;
+    width: 1px;
+    background: v.$border;
+  }
+}
+
+.flow-step {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.flow-num {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  background: v.$black;
+  border: 1px solid v.$black3;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: v.$red;
+  position: relative;
+  z-index: 1;
+}
+
+.flow-body {
+  padding-top: 2px;
+
+  h4 {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: v.$black;
+    padding-top: 4px;
+    margin: 0 0 4px;
+  }
+
+  p {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: v.$muted;
+    margin: 0;
+    line-height: 1.6;
+  }
+}

@@ -1,0 +1,43 @@
+@use '../../../../styles/variables' as v;
+
+.table-wrapper {
+  overflow-x: auto;
+  margin-bottom: 20px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+th {
+  background: v.$black;
+  border: 1px solid v.$black3;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #ff6b5e;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 10px 14px;
+  text-align: left;
+}
+
+td {
+  border: 1px solid v.$border;
+  padding: 10px 14px;
+  color: #444;
+  vertical-align: top;
+  font-family: 'DM Sans', sans-serif;
+  line-height: 1.6;
+}
+
+tbody tr {
+  &:nth-child(even) td {
+    background: v.$off;
+  }
+
+  &:hover td {
+    background: v.$red-dim;
+  }
+}

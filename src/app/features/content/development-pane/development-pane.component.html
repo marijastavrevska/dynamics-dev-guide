@@ -1,0 +1,34 @@
+<article class="development-pane">
+  <header class="page-header">
+    <span class="page-tag">{{ development().module }}</span>
+    <h2>{{ development().title }}</h2>
+    <p class="page-desc">{{ development().description }}</p>
+    <div class="meta-pills">
+      <span class="meta-pill">{{ development().date }}</span>
+      @for (tag of development().tags; track tag) {
+        <span class="meta-pill">{{ tag }}</span>
+      }
+    </div>
+  </header>
+
+  @if (development().objects.length > 0) {
+    <section class="objects-section">
+      <div class="objects-label">Objects</div>
+      <div class="objects-grid">
+        @for (obj of development().objects; track obj.name) {
+          <app-object-card
+            [type]="obj.type"
+            [name]="obj.name"
+            [description]="obj.description"
+          />
+        }
+      </div>
+    </section>
+  }
+
+  <section class="patterns-section">
+    @for (pattern of development().patterns; track pattern.title) {
+      <app-pattern-block [pattern]="pattern" />
+    }
+  </section>
+</article>

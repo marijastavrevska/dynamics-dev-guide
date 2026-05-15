@@ -1,0 +1,99 @@
+@use '../../../../styles/variables' as v;
+
+.development-pane {
+  width: 100%;
+}
+
+.page-header {
+  margin-bottom: 40px;
+}
+
+.page-tag {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: v.$red;
+  background: v.$red-dim;
+  border: 1px solid v.$red-border;
+  padding: 4px 10px;
+  border-radius: 20px;
+  margin-bottom: 16px;
+}
+
+h2 {
+  font-family: 'Clash Display', sans-serif;
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+  color: v.$black;
+  margin: 0 0 12px;
+}
+
+.page-desc {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  color: v.$muted;
+  max-width: 600px;
+  line-height: 1.7;
+  margin: 0 0 20px;
+}
+
+.meta-pills {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.meta-pill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #999;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  &::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: v.$red;
+    flex-shrink: 0;
+  }
+}
+
+.objects-section {
+  margin-bottom: 44px;
+}
+
+.objects-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: v.$red;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: v.$border;
+  }
+}
+
+.objects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.patterns-section {
+  margin-top: 8px;
+}

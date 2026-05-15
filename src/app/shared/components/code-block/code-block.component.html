@@ -1,0 +1,11 @@
+<div class="code-block">
+  @if (label()) {
+    <span class="code-label">{{ label() }}</span>
+  }
+  <div class="pre-wrapper">
+    <button class="copy-btn" (click)="copy()">
+      {{ copied() ? 'Copied!' : 'Copy' }}
+    </button>
+    <pre><code [innerHTML]="code()"></code></pre>
+  </div>
+</div>

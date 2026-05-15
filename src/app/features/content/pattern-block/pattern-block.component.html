@@ -1,0 +1,33 @@
+<div class="pattern-block">
+  <app-section-label [label]="pattern().title" />
+
+  @if (pattern().body) {
+    <p class="pattern-body">{{ pattern().body }}</p>
+  }
+
+  @for (sub of pattern().subSections ?? []; track sub.title) {
+    <div class="sub-section">
+      <h3 class="sub">{{ sub.title }}</h3>
+
+      @if (sub.body) {
+        <p class="sub-body" [innerHTML]="sub.body"></p>
+      }
+
+      @for (cb of sub.codeBlocks ?? []; track cb.label) {
+        <app-code-block [label]="cb.label" [code]="cb.code" />
+      }
+
+      @for (callout of sub.callouts ?? []; track callout.title) {
+        <app-callout [type]="callout.type" [title]="callout.title" [body]="callout.body" />
+      }
+
+      @if (sub.flowSteps && sub.flowSteps.length > 0) {
+        <app-flow-step [steps]="sub.flowSteps" />
+      }
+
+      @if (sub.tableData) {
+        <app-data-table [headers]="sub.tableData.headers" [rows]="sub.tableData.rows" />
+      }
+    </div>
+  }
+</div>

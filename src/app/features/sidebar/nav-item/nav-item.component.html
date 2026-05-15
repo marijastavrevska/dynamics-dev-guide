@@ -1,0 +1,12 @@
+<div class="nav-item" [class.active]="isActive()" (click)="onClick()">
+  <div class="nav-dot"></div>
+  <div class="nav-content">
+    <div class="nav-title-row">
+      <span class="nav-title">{{ title() }}</span>
+      @if (isNew()) {
+        <span class="nav-badge">NEW</span>
+      }
+    </div>
+    <span class="nav-meta">{{ meta() }}</span>
+  </div>
+</div>

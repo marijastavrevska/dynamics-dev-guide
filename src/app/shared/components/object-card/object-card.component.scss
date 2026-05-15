@@ -1,0 +1,43 @@
+@use '../../../../styles/variables' as v;
+
+.object-card {
+  background: v.$off;
+  border: 1px solid v.$border;
+  border-radius: 8px;
+  padding: 14px 16px;
+  transition: border-color 0.15s;
+
+  &:hover {
+    border-color: v.$red;
+  }
+}
+
+.object-type {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: v.$red;
+  background: v.$red-dim;
+  border: 1px solid v.$red-border;
+  padding: 2px 7px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.object-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: v.$black;
+  margin-bottom: 6px;
+}
+
+.object-desc {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  color: v.$muted;
+  line-height: 1.6;
+  margin: 0;
+}

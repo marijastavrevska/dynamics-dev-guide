@@ -1,0 +1,11 @@
+<div class="flow-wrapper">
+  @for (step of steps(); track $index) {
+    <div class="flow-step">
+      <div class="flow-num">{{ $index + 1 }}</div>
+      <div class="flow-body">
+        <h4>{{ step.title }}</h4>
+        <p>{{ step.body }}</p>
+      </div>
+    </div>
+  }
+</div>

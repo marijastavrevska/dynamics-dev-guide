@@ -1,0 +1,90 @@
+@use '../../../../styles/variables' as v;
+
+.nav-item {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 20px;
+  border-left: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.12s;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-left-color: #333;
+
+    .nav-title {
+      color: #bbb;
+    }
+  }
+
+  &.active {
+    background: rgba(216, 42, 29, 0.1);
+    border-left-color: v.$red;
+
+    .nav-dot {
+      background: v.$red;
+    }
+
+    .nav-title {
+      color: #ff6b5e;
+    }
+
+    .nav-meta {
+      color: rgba(216, 42, 29, 0.55);
+    }
+  }
+}
+
+.nav-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #333;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+
+.nav-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.nav-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.nav-title {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  color: #888;
+  transition: color 0.12s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #444;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.nav-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  background: v.$red-dim;
+  border: 1px solid v.$red-border;
+  color: #ff6b5e;
+  padding: 1px 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
