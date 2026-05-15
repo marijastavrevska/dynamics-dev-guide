@@ -15,9 +15,17 @@ export class SidebarComponent {
 
   readonly nav = inject(NavigationService);
 
-  readonly filtered = computed(() =>
-    this.nav.filteredDevelopments(this.developments())()
-  );
+  readonly filtered = computed(() => {
+    const q = this.nav.searchQuery().toLowerCase().trim();
+    const all = this.developments();
+    if (!q) return all;
+    return all.filter(d =>
+      d.title.toLowerCase().includes(q) ||
+      d.module.toLowerCase().includes(q) ||
+      d.tags.some(t => t.toLowerCase().includes(q)) ||
+      d.patterns.some(p => p.title.toLowerCase().includes(q))
+    );
+  });
 
   onSearch(event: Event): void {
     this.nav.setSearch((event.target as HTMLInputElement).value);

@@ -1,5 +1,4 @@
-import { Injectable, signal, computed } from '@angular/core';
-import { Development } from '../models/development.model';
+import { Injectable, signal } from '@angular/core';
 
 @Injectable({ providedIn: 'root' })
 export class NavigationService {
@@ -12,18 +11,5 @@ export class NavigationService {
 
   setSearch(query: string): void {
     this.searchQuery.set(query);
-  }
-
-  filteredDevelopments(all: Development[]) {
-    return computed(() => {
-      const q = this.searchQuery().toLowerCase().trim();
-      if (!q) return all;
-      return all.filter(d =>
-        d.title.toLowerCase().includes(q) ||
-        d.module.toLowerCase().includes(q) ||
-        d.tags.some(t => t.toLowerCase().includes(q)) ||
-        d.patterns.some(p => p.title.toLowerCase().includes(q))
-      );
-    });
   }
 }
