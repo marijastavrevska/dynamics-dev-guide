@@ -169,28 +169,11 @@
             ]
           },
           {
-            "title": "Resolving RecIds to business key strings",
-            "body": "After the user confirms a selection, multiSelectCtrl.get() returns a container of RecIds. These are resolved back to ProjInvoiceProjId strings and stored for use in the data source query range.",
-            "codeBlocks": [
-              {
-                "label": "X++ — apv_resolveSelectedContractIds()",
-                "code": "<span class=\"kw\">public void</span> <span class=\"func\">apv_resolveSelectedContractIds</span>()\n{\n    <span class=\"type\">container</span>        <span class=\"var\">result</span>;\n    <span class=\"type\">container</span>        <span class=\"var\">selectedRecIds</span>;\n    <span class=\"type\">ProjInvoiceTable</span> <span class=\"var\">projInvoiceTable</span>;\n\n    <span class=\"var\">m_selectedContractIds</span> = <span class=\"func\">conNull</span>();\n    <span class=\"kw\">this</span>.<span class=\"func\">apv_ensureMultiSelect</span>();\n\n    <span class=\"kw\">if</span> (<span class=\"var\">multiSelectCtrl</span> == <span class=\"kw\">null</span>)\n        <span class=\"kw\">return</span>;\n\n    <span class=\"var\">selectedRecIds</span> = <span class=\"var\">multiSelectCtrl</span>.<span class=\"func\">get</span>(); <span class=\"comment\">// container of RecIds</span>\n\n    <span class=\"kw\">for</span> (<span class=\"type\">int</span> <span class=\"var\">i</span> = <span class=\"num\">1</span>; <span class=\"var\">i</span> <= <span class=\"func\">conLen</span>(<span class=\"var\">selectedRecIds</span>); <span class=\"var\">i</span>++)\n    {\n        <span class=\"kw\">select firstonly</span> ProjInvoiceProjId <span class=\"kw\">from</span> <span class=\"var\">projInvoiceTable</span>\n            <span class=\"kw\">where</span> <span class=\"var\">projInvoiceTable</span>.RecId == <span class=\"func\">conPeek</span>(<span class=\"var\">selectedRecIds</span>, <span class=\"var\">i</span>);\n\n        <span class=\"kw\">if</span> (<span class=\"var\">projInvoiceTable</span>.ProjInvoiceProjId)\n            <span class=\"var\">result</span> += [<span class=\"var\">projInvoiceTable</span>.ProjInvoiceProjId];\n    }\n\n    <span class=\"var\">m_selectedContractIds</span> = <span class=\"var\">result</span>;\n}"
-              }
-            ],
-            "callouts": [
-              {
-                "type": "why",
-                "title": "Why resolve to strings and not keep RecIds",
-                "body": "The data source query range filters on <code>ProjInvoiceProjId</code> — the natural business key — not on <code>ProjInvoiceTable.RecId</code>. Storing strings means the range-building logic is clean and each value is directly usable in <code>SysQuery::value()</code> calls without a join."
-              }
-            ]
-          },
-          {
             "title": "Applying the selection as a query range",
-            "body": "The data source executeQuery() applies a different range strategy depending on how many contracts are selected.",
+            "body": "After resolving RecIds to business key strings, the data source range is set using three different strategies depending on the selection count.",
             "codeBlocks": [
               {
-                "label": "X++ — Three-strategy range in executeQuery()",
+                "label": "X++ — Three-strategy range application in executeQuery()",
                 "code": "<span class=\"kw\">if</span> (<span class=\"func\">conLen</span>(<span class=\"var\">m_selectedContractIds</span>) == <span class=\"num\">0</span>)\n    <span class=\"var\">m_oRangeContract</span>.<span class=\"func\">value</span>(<span class=\"type\">SysQuery</span>::<span class=\"func\">valueEmptyString</span>()); <span class=\"comment\">// show nothing</span>\n<span class=\"kw\">else if</span> (<span class=\"func\">conLen</span>(<span class=\"var\">m_selectedContractIds</span>) == <span class=\"num\">1</span>)\n    <span class=\"var\">m_oRangeContract</span>.<span class=\"func\">value</span>(<span class=\"func\">conPeek</span>(<span class=\"var\">m_selectedContractIds</span>, <span class=\"num\">1</span>));\n<span class=\"kw\">else</span>\n    <span class=\"var\">m_oRangeContract</span>.<span class=\"func\">value</span>(\n        <span class=\"var\">element</span>.<span class=\"func\">apv_buildMultiValueRange</span>(<span class=\"var\">m_selectedContractIds</span>));\n\n<span class=\"kw\">super</span>();\n<span class=\"var\">element</span>.<span class=\"func\">clearCache</span>();\n<span class=\"var\">element</span>.<span class=\"func\">refreshTotals</span>();"
               }
             ],
@@ -218,7 +201,7 @@
             "codeBlocks": [
               {
                 "label": "X++ — edit method write branch",
-                "code": "<span class=\"kw\">if</span> (<span class=\"var\">_set</span>)\n{\n    <span class=\"kw\">if</span> (<span class=\"var\">_contractLine</span>.LineType != <span class=\"type\">PSAContractLineType</span>::UOD)\n        <span class=\"kw\">return</span> <span class=\"num\">0</span>; <span class=\"comment\">// column does not apply to this line type</span>\n\n    <span class=\"type\">Qty</span> <span class=\"var\">invoiced</span>  = <span class=\"type\">PSAContractLineItemsServer</span>::<span class=\"func\">getContractLineInvoicedUnitsForUOD</span>(<span class=\"var\">_contractLine</span>.ContractLineNum);\n    <span class=\"type\">Qty</span> <span class=\"var\">remaining</span> = <span class=\"var\">_contractLine</span>.Units - <span class=\"var\">invoiced</span>;\n    <span class=\"kw\">if</span> (<span class=\"var\">remaining</span> < <span class=\"num\">0</span>) <span class=\"var\">remaining</span> = <span class=\"num\">0</span>;\n\n    <span class=\"kw\">if</span> (<span class=\"var\">_value</span> > <span class=\"var\">remaining</span>)\n    {\n        <span class=\"func\">warning</span>(<span class=\"func\">strFmt</span>(<span class=\"str\">\"@apv_:ExceedsMaxAllowedMsg\"</span>, <span class=\"var\">_value</span>, <span class=\"var\">remaining</span>));\n        <span class=\"kw\">return</span> <span class=\"var\">remaining</span>; <span class=\"comment\">// clamp — don't reject</span>\n    }\n    <span class=\"kw\">if</span> (<span class=\"var\">_value</span> < <span class=\"num\">0</span>)\n    {\n        <span class=\"func\">warning</span>(<span class=\"str\">\"@apv_:NegativeValueMsg\"</span>);\n        <span class=\"kw\">return</span> <span class=\"num\">0</span>;\n    }\n\n    <span class=\"comment\">// Stage in buffer — not written to DB</span>\n    <span class=\"type\">APV_PSAContractStatusFormState</span> <span class=\"var\">state</span> =\n        <span class=\"type\">APV_PSAContractStatusFormState</span>::<span class=\"func\">getOrCreate</span>(<span class=\"var\">element</span>);\n    <span class=\"var\">state</span>.apv_unitsReadyBuffer.<span class=\"func\">insert</span>(<span class=\"var\">_contractLine</span>.RecId, <span class=\"var\">_value</span>);\n\n    <span class=\"kw\">return</span> <span class=\"var\">_value</span>;\n}"
+                "code": "<span class=\"kw\">if</span> (<span class=\"var\">_set</span>)\n{\n    <span class=\"kw\">if</span> (<span class=\"var\">_contractLine</span>.LineType != <span class=\"type\">PSAContractLineType</span>::UOD)\n        <span class=\"kw\">return</span> <span class=\"num\">0</span>; <span class=\"comment\">// column does not apply to this line type</span>\n\n    <span class=\"type\">Qty</span> <span class=\"var\">invoiced</span>  = <span class=\"type\">PSAContractLineItemsServer</span>::<span class=\"func\">getContractLineInvoicedUnitsForUOD</span>(<span class=\"var\">_contractLine</span>.ContractLineNum);\n    <span class=\"type\">Qty</span> <span class=\"var\">remaining</span> = <span class=\"var\">_contractLine</span>.Units - <span class=\"var\">invoiced</span>;\n    <span class=\"kw\">if</span> (<span class=\"var\">remaining</span> < <span class=\"num\">0</span>) <span class=\"var\">remaining</span> = <span class=\"num\">0</span>;\n\n    <span class=\"kw\">if</span> (<span class=\"var\">_value</span> > <span class=\"var\">remaining</span>)\n    {\n        <span class=\"func\">warning</span>(<span class=\"func\">strFmt</span>(<span class=\"str\">\"@apv_:ExceedsMaxAllowedMsg\"</span>, <span class=\"var\">_value</span>, <span class=\"var\">remaining</span>));\n        <span class=\"kw\">return</span> <span class=\"var\">remaining</span>; <span class=\"comment\">// clamp to max — correct, don't reject</span>\n    }\n    <span class=\"kw\">if</span> (<span class=\"var\">_value</span> < <span class=\"num\">0</span>)\n    {\n        <span class=\"func\">warning</span>(<span class=\"str\">\"@apv_:NegativeValueMsg\"</span>);\n        <span class=\"kw\">return</span> <span class=\"num\">0</span>;\n    }\n\n    <span class=\"comment\">// Stage in buffer — not written to DB</span>\n    <span class=\"type\">APV_PSAContractStatusFormState</span> <span class=\"var\">state</span> =\n        <span class=\"type\">APV_PSAContractStatusFormState</span>::<span class=\"func\">getOrCreate</span>(<span class=\"var\">element</span>);\n    <span class=\"var\">state</span>.apv_unitsReadyBuffer.<span class=\"func\">insert</span>(<span class=\"var\">_contractLine</span>.RecId, <span class=\"var\">_value</span>);\n\n    <span class=\"kw\">return</span> <span class=\"var\">_value</span>;\n}"
               }
             ],
             "callouts": [
@@ -230,7 +213,7 @@
               {
                 "type": "why",
                 "title": "Why clamp instead of reject on overrun",
-                "body": "Returning the clamped value snaps the cell to the maximum rather than showing stale data. The user sees the corrected value immediately and the warning explains why. Rejection would require the user to clear and retype, which is worse UX for a validation that has an obvious correct answer."
+                "body": "Returning the clamped value snaps the cell to the maximum rather than showing stale data or throwing an error. The user sees the corrected value immediately and the warning explains why. Rejection would require the user to clear and retype, which is worse UX for a validation that has an obvious correct answer."
               }
             ]
           },
@@ -240,14 +223,14 @@
             "codeBlocks": [
               {
                 "label": "X++ — edit method read branch",
-                "code": "<span class=\"kw\">else</span>\n{\n    <span class=\"kw\">if</span> (<span class=\"var\">_contractLine</span>.LineType != <span class=\"type\">PSAContractLineType</span>::UOD)\n        <span class=\"kw\">return</span> <span class=\"num\">0</span>;\n\n    <span class=\"type\">APV_PSAContractStatusFormState</span> <span class=\"var\">state</span> =\n        <span class=\"type\">APV_PSAContractStatusFormState</span>::<span class=\"func\">getOrCreate</span>(<span class=\"var\">element</span>);\n\n    <span class=\"comment\">// Priority 1: pending edit from this session</span>\n    <span class=\"kw\">if</span> (<span class=\"var\">state</span>.apv_unitsReadyBuffer.<span class=\"func\">exists</span>(<span class=\"var\">_contractLine</span>.RecId))\n        <span class=\"kw\">return</span> <span class=\"func\">any2Real</span>(<span class=\"var\">state</span>.apv_unitsReadyBuffer.<span class=\"func\">lookup</span>(<span class=\"var\">_contractLine</span>.RecId));\n\n    <span class=\"comment\">// Priority 2: saved but not yet invoiced log entry</span>\n    <span class=\"type\">PSAUnitsUpdateLog</span> <span class=\"var\">unitsUpdateLog</span>;\n    <span class=\"kw\">select firstonly</span> AdditionalUnits <span class=\"kw\">from</span> <span class=\"var\">unitsUpdateLog</span>\n        <span class=\"kw\">where</span> <span class=\"var\">unitsUpdateLog</span>.ContractLineNum == <span class=\"var\">_contractLine</span>.ContractLineNum\n           && <span class=\"var\">unitsUpdateLog</span>.IsProposal      == <span class=\"type\">NoYes</span>::No\n           && <span class=\"var\">unitsUpdateLog</span>.IsInvoiced      == <span class=\"type\">NoYes</span>::No;\n\n    <span class=\"kw\">if</span> (<span class=\"var\">unitsUpdateLog</span>.AdditionalUnits)\n        <span class=\"kw\">return</span> <span class=\"var\">unitsUpdateLog</span>.AdditionalUnits;\n\n    <span class=\"comment\">// Priority 3: computed default — remaining = contracted - invoiced</span>\n    <span class=\"type\">Qty</span> <span class=\"var\">invoiced</span>  = <span class=\"type\">PSAContractLineItemsServer</span>::<span class=\"func\">getContractLineInvoicedUnitsForUOD</span>(<span class=\"var\">_contractLine</span>.ContractLineNum);\n    <span class=\"type\">Qty</span> <span class=\"var\">remaining</span> = <span class=\"var\">_contractLine</span>.Units - <span class=\"var\">invoiced</span>;\n    <span class=\"kw\">return</span> <span class=\"var\">remaining</span> < <span class=\"num\">0</span> ? <span class=\"num\">0</span> : <span class=\"var\">remaining</span>;\n}"
+                "code": "<span class=\"kw\">else</span>\n{\n    <span class=\"kw\">if</span> (<span class=\"var\">_contractLine</span>.LineType != <span class=\"type\">PSAContractLineType</span>::UOD)\n        <span class=\"kw\">return</span> <span class=\"num\">0</span>;\n\n    <span class=\"type\">APV_PSAContractStatusFormState</span> <span class=\"var\">state</span> =\n        <span class=\"type\">APV_PSAContractStatusFormState</span>::<span class=\"func\">getOrCreate</span>(<span class=\"var\">element</span>);\n\n    <span class=\"comment\">// Priority 1: pending edit from this session</span>\n    <span class=\"kw\">if</span> (<span class=\"var\">state</span>.apv_unitsReadyBuffer.<span class=\"func\">exists</span>(<span class=\"var\">_contractLine</span>.RecId))\n        <span class=\"kw\">return</span> <span class=\"func\">any2Real</span>(<span class=\"var\">state</span>.apv_unitsReadyBuffer.<span class=\"func\">lookup</span>(<span class=\"var\">_contractLine</span>.RecId));\n\n    <span class=\"comment\">// Priority 2: saved but not yet invoiced log entry</span>\n    <span class=\"type\">PSAUnitsUpdateLog</span> <span class=\"var\">unitsUpdateLog</span>;\n    <span class=\"kw\">select firstonly</span> AdditionalUnits <span class=\"kw\">from</span> <span class=\"var\">unitsUpdateLog</span>\n        <span class=\"kw\">where</span> <span class=\"var\">unitsUpdateLog</span>.ContractLineNum == <span class=\"var\">_contractLine</span>.ContractLineNum\n           && <span class=\"var\">unitsUpdateLog</span>.IsProposal      == <span class=\"type\">NoYes</span>::No\n           && <span class=\"var\">unitsUpdateLog</span>.IsInvoiced      == <span class=\"type\">NoYes</span>::No;\n\n    <span class=\"kw\">if</span> (<span class=\"var\">unitsUpdateLog</span>.AdditionalUnits)\n        <span class=\"kw\">return</span> <span class=\"var\">unitsUpdateLog</span>.AdditionalUnits;\n\n    <span class=\"comment\">// Priority 3: computed default</span>\n    <span class=\"type\">Qty</span> <span class=\"var\">invoiced</span>  = <span class=\"type\">PSAContractLineItemsServer</span>::<span class=\"func\">getContractLineInvoicedUnitsForUOD</span>(<span class=\"var\">_contractLine</span>.ContractLineNum);\n    <span class=\"type\">Qty</span> <span class=\"var\">remaining</span> = <span class=\"var\">_contractLine</span>.Units - <span class=\"var\">invoiced</span>;\n    <span class=\"kw\">return</span> <span class=\"var\">remaining</span> < <span class=\"num\">0</span> ? <span class=\"num\">0</span> : <span class=\"var\">remaining</span>;\n}"
               }
             ],
             "callouts": [
               {
                 "type": "why",
                 "title": "Why three priorities",
-                "body": "Without priority 1, pending edits vanish on every grid refresh because the buffer is not checked. Without priority 2, a value saved in a previous session disappears when the form is reopened. Priority 3 is the safe default for a line never touched — show what is left to invoice rather than zero."
+                "body": "Without priority 1, pending edits vanish on every grid refresh because the buffer is not checked. Without priority 2, a value saved in a previous session disappears when the form is reopened. Priority 3 is the safe default for a line that has never been touched — show what is left to invoice rather than zero."
               }
             ]
           }
@@ -255,7 +238,7 @@
       },
       {
         "title": "Pattern — Singleton form state for pending edits",
-        "body": "When multiple components of a form — edit methods, button handlers, data source methods — all need to share the same unsaved state, a singleton class acts as the single source of truth for that session.",
+        "body": "When multiple components of a form (edit methods, button handlers, data source methods) all need to share the same unsaved state, a singleton class acts as the single source of truth for that session.",
         "subSections": [
           {
             "codeBlocks": [
@@ -278,7 +261,7 @@
               {
                 "type": "warn",
                 "title": "⚠️ Clear buffers after every commit",
-                "body": "After a successful commit, remove the submitted RecIds from both buffers. If you skip this, the edit method read branch returns the old staged value on the next refresh instead of reading the freshly committed database value — the grid appears not to have updated."
+                "body": "After a successful commit, remove the submitted RecIds from both buffers. If you skip this, the edit method read branch will return the old staged value on the next refresh instead of reading the freshly committed database value — the grid appears not to have updated."
               }
             ]
           }
@@ -390,6 +373,238 @@
                 "type": "tip",
                 "title": "✅ Neither privilege touches ProjTable",
                 "body": "The customization is intentionally scoped to billing rule management only. Users cannot use these privileges to modify the project itself — the privileges have no relation to ProjTable."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "contract-status-workbench",
+    "title": "Contract Status Workbench — TempDB Grid and Result Objects",
+    "module": "Project Management and Accounting",
+    "date": "June 2026",
+    "description": "TempDB-backed workbench form that flattens heterogeneous PSA billing line types into a single unified grid, with display-method computed columns, a typed result object per processed row, and a transactional unit-delivery write in the service layer.",
+    "tags": ["tempdb", "display-methods", "result-object", "psa", "tempdb-datasource", "computed-columns"],
+    "objects": [
+      {
+        "type": "Form",
+        "name": "APV_UpdateContractStatus",
+        "description": "Workbench form with APV_ContractLinesTmp as its data source — populates the TempDB table in init/run and exposes display and edit methods on the data source class."
+      },
+      {
+        "type": "Table",
+        "name": "APV_ContractLinesTmp",
+        "description": "TempDB table that flattens ProjOnAccTrans (milestone) and PSAContractLineItems (UOD) into a single homogeneous record set for the grid."
+      },
+      {
+        "type": "Class · data",
+        "name": "APV_PSAContractStatusResult",
+        "description": "Typed result object returned from markSelected() — carries outcome (processed / skipped), line type, and computed units, with factory methods per outcome."
+      },
+      {
+        "type": "Class · static",
+        "name": "APV_PSAContractStatusService",
+        "description": "Service layer owning the ttsbegin/ttscommit block, including createUnitDeliveredTransaction() for writing UOD delivery records."
+      },
+      {
+        "type": "Class · static",
+        "name": "APV_PSAContractStatusBuilder",
+        "description": "Assembles the commit Map from state buffers, keyed by OnAccTransRecId for milestones and SourceRecId for UOD lines."
+      },
+      {
+        "type": "Class",
+        "name": "APV_PSAContractStatusFormState",
+        "description": "Session singleton holding markAsCompleted and unitsReady buffers plus the pre-fetched locked RecId set."
+      },
+      {
+        "type": "Class · data",
+        "name": "APV_PSAContractStatusCommit",
+        "description": "DTO carrying lineType, markAsCompleted, unitsReady, and onAccTransRecId for a single billing line commit."
+      },
+      {
+        "type": "Class · static",
+        "name": "APV_PSAContractStatusHelper",
+        "description": "Lock-detection helpers — single-row isLineLocked(), batch preFetchLockedRecIds(), and lockedRowBackColor()."
+      },
+      {
+        "type": "Class · final",
+        "name": "UpdateContractStatusBRVisibilityManager",
+        "description": "Delegate subscriber that hides the workbench menu item when the parameters flag is OFF."
+      },
+      {
+        "type": "Table Extension",
+        "name": "ProjParameters.APV_Extension",
+        "description": "Adds APV_AutomatizeContractStatus (NoYes) field to ProjParameters."
+      },
+      {
+        "type": "Form Extension",
+        "name": "ProjParameters.APV_Extension",
+        "description": "Surfaces the APV_AutomatizeContractStatus control on the Invoice tab of ProjParameters."
+      }
+    ],
+    "patterns": [
+      {
+        "title": "Pattern — TempDB table as a unified grid data source",
+        "body": "When a grid must display records sourced from two structurally different tables (here, milestone lines from ProjOnAccTrans and unit-of-delivery lines from PSAContractLineItems), a TempDB table acts as a flattening layer. Both source types are projected into identical TempDB records, giving the form a single homogeneous data source with consistent field access across all rows.",
+        "subSections": [
+          {
+            "title": "TempDB table field layout",
+            "body": "The table carries the superset of fields needed by either line type. Fields inapplicable to a given line type are left at their default values. The LineType field distinguishes the source at runtime.",
+            "tableData": {
+              "headers": ["Field", "Type", "Sourced from"],
+              "rows": [
+                ["<code>SourceRecId</code>", "String30", "PSAContractLineItems.RecId (UOD) or empty (milestone)"],
+                ["<code>OnAccTransRecId</code>", "String30", "ProjOnAccTrans.RecId (milestone) or empty (UOD)"],
+                ["<code>ContractLineNum</code>", "String", "Both types"],
+                ["<code>ProjInvoiceProjId</code>", "String", "Both types"],
+                ["<code>ProjectId</code>", "String", "Both types"],
+                ["<code>LineType</code>", "PSAContractLineType", "Set during population — Milestone or UOD"],
+                ["<code>Description</code>", "String", "Both types"],
+                ["<code>SalesAmount</code>", "Real", "Both types"],
+                ["<code>BillingRule</code>", "String", "Both types"],
+                ["<code>IsMilestoneComplete</code>", "NoYes", "ProjOnAccTrans — always NoYes::No for UOD"],
+                ["<code>Units</code>", "Real", "PSAContractLineItems — 0 for milestone"],
+                ["<code>InvoicedUnits</code>", "Real", "PSAContractLineItems — 0 for milestone"]
+              ]
+            },
+            "callouts": [
+              {
+                "type": "why",
+                "title": "Why a TempDB table instead of a query join",
+                "body": "ProjOnAccTrans and PSAContractLineItems share ContractLineNum but have incompatible field structures and no FK that supports a clean outer join across both. A TempDB table lets each source populate only its own fields while the grid works with a single uniform record type. Display and edit methods on the data source class handle the per-type differences at render time."
+              },
+              {
+                "type": "warn",
+                "title": "⚠️ TempDB tables are session-scoped — populate before the form opens",
+                "body": "A TempDB table is empty when the form initialises. Population must happen in <code>run()</code> or at latest in <code>executeQuery()</code>. If the population query runs after the data source's first <code>super()</code> call, the grid will render empty and no error is thrown. Always populate before calling <code>super()</code> in <code>executeQuery()</code>."
+              },
+              {
+                "type": "tip",
+                "title": "Use RecId strings, not raw Int64, for cross-type keying",
+                "body": "<code>SourceRecId</code> and <code>OnAccTransRecId</code> are stored as String30 here rather than RecId (Int64). This allows the commit builder to key the Map by a compound string that encodes both the source type and the record identity without a second discriminator field."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Pattern — Display methods for computed read-only columns",
+        "body": "Display methods on the data source class add read-only computed columns to the grid without storing the computed value in the table. The framework calls them on every row render. They are suitable for values derived from other fields or from a secondary query, provided the derivation is cheap.",
+        "subSections": [
+          {
+            "title": "Invoiced amount and remaining units",
+            "body": "These display methods call PSAContractLineItemsServer helpers to retrieve amounts not stored directly on the TempDB record.",
+            "codeBlocks": [
+              {
+                "label": "X++ — Display methods on APV_ContractLinesTmp data source",
+                "code": "<span class=\"kw\">public display</span> <span class=\"type\">AmountMST</span> <span class=\"func\">invoicedShow</span>(<span class=\"type\">APV_ContractLinesTmp</span> <span class=\"var\">_line</span>)\n{\n    <span class=\"kw\">if</span> (<span class=\"var\">_line</span>.LineType == <span class=\"type\">PSAContractLineType</span>::Milestone)\n        <span class=\"kw\">return</span> <span class=\"type\">PSAContractLineItemsServer</span>::<span class=\"func\">totalContractLinePaid</span>(<span class=\"var\">_line</span>.ContractLineNum);\n\n    <span class=\"kw\">return</span> <span class=\"type\">PSAContractLineItemsServer</span>::<span class=\"func\">getContractLineInvoicedAmounts</span>(<span class=\"var\">_line</span>.ContractLineNum);\n}\n\n<span class=\"kw\">public display</span> <span class=\"type\">Qty</span> <span class=\"func\">remainingShow</span>(<span class=\"type\">APV_ContractLinesTmp</span> <span class=\"var\">_line</span>)\n{\n    <span class=\"kw\">if</span> (<span class=\"var\">_line</span>.LineType != <span class=\"type\">PSAContractLineType</span>::UOD)\n        <span class=\"kw\">return</span> <span class=\"num\">0</span>;\n\n    <span class=\"type\">Qty</span> <span class=\"var\">invoiced</span>  = <span class=\"type\">PSAContractLineItemsServer</span>::<span class=\"func\">getContractLineInvoicedUnitsForUOD</span>(<span class=\"var\">_line</span>.ContractLineNum);\n    <span class=\"type\">Qty</span> <span class=\"var\">remaining</span> = <span class=\"var\">_line</span>.Units - <span class=\"var\">invoiced</span>;\n    <span class=\"kw\">return</span> <span class=\"var\">remaining</span> < <span class=\"num\">0</span> ? <span class=\"num\">0</span> : <span class=\"var\">remaining</span>;\n}\n\n<span class=\"kw\">public display</span> <span class=\"type\">Percent</span> <span class=\"func\">percentCompleteShow</span>(<span class=\"type\">APV_ContractLinesTmp</span> <span class=\"var\">_line</span>)\n{\n    <span class=\"kw\">if</span> (<span class=\"var\">_line</span>.LineType != <span class=\"type\">PSAContractLineType</span>::Milestone || <span class=\"var\">_line</span>.SalesAmount == <span class=\"num\">0</span>)\n        <span class=\"kw\">return</span> <span class=\"num\">0</span>;\n\n    <span class=\"type\">AmountMST</span> <span class=\"var\">paid</span> = <span class=\"type\">PSAContractLineItemsServer</span>::<span class=\"func\">totalContractLinePaid</span>(<span class=\"var\">_line</span>.ContractLineNum);\n    <span class=\"kw\">return</span> (<span class=\"var\">paid</span> / <span class=\"var\">_line</span>.SalesAmount) * <span class=\"num\">100</span>;\n}"
+              }
+            ],
+            "callouts": [
+              {
+                "type": "why",
+                "title": "What display methods achieve over stored fields",
+                "body": "The displayed values are always current — they are computed fresh on each render from live data rather than from a snapshot stored at population time. This matters for amounts that can change between form open and grid scroll (e.g. if another user posts an invoice while the workbench is open)."
+              },
+              {
+                "type": "warn",
+                "title": "⚠️ Display methods are called per row per render — keep them fast",
+                "body": "Each display method fires once per visible row every time the grid redraws. A method that executes a non-indexed query per call will produce N queries per scroll. Ensure the underlying server methods use indexed lookups. If the derivation is expensive, consider pre-computing into the TempDB record at population time instead."
+              },
+              {
+                "type": "how",
+                "title": "How the LineType guard works",
+                "body": "Both line types share the same grid. A guard at the top of each method returns a zero/empty value for the inapplicable type. This is cleaner than hiding and showing columns per selection — the column stays visible but shows a blank for rows where it has no meaning."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Pattern — Typed result object with factory methods",
+        "body": "When a processing method can produce several meaningfully different outcomes — processed successfully, skipped with a reason, or processed with a specific computed value — encode each outcome as a named factory method on a result class rather than using output parameters or a boolean return.",
+        "subSections": [
+          {
+            "codeBlocks": [
+              {
+                "label": "X++ — Result class with factory methods per outcome",
+                "code": "<span class=\"kw\">class</span> <span class=\"type\">APV_PSAContractStatusResult</span>\n{\n    <span class=\"kw\">private</span> <span class=\"type\">PSAContractLineType</span> <span class=\"var\">lineType</span>;\n    <span class=\"kw\">private</span> <span class=\"type\">boolean</span>            <span class=\"var\">skipped</span>;\n    <span class=\"kw\">private</span> <span class=\"type\">str</span>               <span class=\"var\">skipMessage</span>;\n    <span class=\"kw\">private</span> <span class=\"type\">Qty</span>               <span class=\"var\">unitsReady</span>;\n\n    <span class=\"kw\">public static</span> <span class=\"type\">APV_PSAContractStatusResult</span> <span class=\"func\">createMilestoneResult</span>()\n    {\n        <span class=\"type\">APV_PSAContractStatusResult</span> <span class=\"var\">result</span> = <span class=\"kw\">new</span> <span class=\"type\">APV_PSAContractStatusResult</span>();\n        <span class=\"var\">result</span>.lineType = <span class=\"type\">PSAContractLineType</span>::Milestone;\n        <span class=\"var\">result</span>.skipped  = <span class=\"kw\">false</span>;\n        <span class=\"kw\">return</span> <span class=\"var\">result</span>;\n    }\n\n    <span class=\"kw\">public static</span> <span class=\"type\">APV_PSAContractStatusResult</span> <span class=\"func\">createUnitResult</span>(<span class=\"type\">Qty</span> <span class=\"var\">_unitsReady</span>)\n    {\n        <span class=\"type\">APV_PSAContractStatusResult</span> <span class=\"var\">result</span> = <span class=\"kw\">new</span> <span class=\"type\">APV_PSAContractStatusResult</span>();\n        <span class=\"var\">result</span>.lineType   = <span class=\"type\">PSAContractLineType</span>::UOD;\n        <span class=\"var\">result</span>.skipped    = <span class=\"kw\">false</span>;\n        <span class=\"var\">result</span>.unitsReady = <span class=\"var\">_unitsReady</span>;\n        <span class=\"kw\">return</span> <span class=\"var\">result</span>;\n    }\n\n    <span class=\"kw\">public static</span> <span class=\"type\">APV_PSAContractStatusResult</span> <span class=\"func\">createSkippedResult</span>(<span class=\"type\">str</span> <span class=\"var\">_message</span>)\n    {\n        <span class=\"type\">APV_PSAContractStatusResult</span> <span class=\"var\">result</span> = <span class=\"kw\">new</span> <span class=\"type\">APV_PSAContractStatusResult</span>();\n        <span class=\"var\">result</span>.skipped     = <span class=\"kw\">true</span>;\n        <span class=\"var\">result</span>.skipMessage = <span class=\"var\">_message</span>;\n        <span class=\"kw\">return</span> <span class=\"var\">result</span>;\n    }\n}"
+              }
+            ],
+            "callouts": [
+              {
+                "type": "why",
+                "title": "Why factory methods over a boolean return or output parameters",
+                "body": "A boolean return forces the caller to separately query state to find out what happened. Output parameters make the call site verbose and fragile if the set of outcomes grows. Factory methods make each outcome self-describing — the caller calls <code>result.isSkipped()</code> or reads <code>result.unitsReady</code> with no ambiguity about which fields are populated for which outcome."
+              },
+              {
+                "type": "tip",
+                "title": "Extend outcomes without changing callers",
+                "body": "Adding a new outcome (e.g. <code>createPartialResult()</code>) requires only a new factory method on the class. Callers that do not handle the new outcome can treat it as the base case. This is safer than adding a new enum value to an existing NoYes-style return, which would silently fall through existing switch statements."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Pattern — Transactional write for a derived record in the service layer",
+        "body": "When committing a UOD billing line update, the service must both update the existing contract line and create a new unit-delivery transaction record — in the same ttsbegin/ttscommit block. The creation logic is extracted into a named private method on the service class to keep the commit loop readable.",
+        "subSections": [
+          {
+            "codeBlocks": [
+              {
+                "label": "X++ — createUnitDeliveredTransaction inside ttsbegin/ttscommit",
+                "code": "<span class=\"kw\">public static void</span> <span class=\"func\">validateAndUpdate</span>(<span class=\"type\">Map</span> <span class=\"var\">_commitBuffer</span>)\n{\n    <span class=\"type\">MapEnumerator</span> <span class=\"var\">me</span> = <span class=\"var\">_commitBuffer</span>.<span class=\"func\">getEnumerator</span>();\n\n    <span class=\"kw\">ttsbegin</span>;\n    <span class=\"kw\">while</span> (<span class=\"var\">me</span>.<span class=\"func\">moveNext</span>())\n    {\n        <span class=\"type\">APV_PSAContractStatusCommit</span> <span class=\"var\">commit</span> = <span class=\"var\">me</span>.<span class=\"func\">currentValue</span>();\n\n        <span class=\"kw\">if</span> (<span class=\"var\">commit</span>.lineType == <span class=\"type\">PSAContractLineType</span>::Milestone)\n        {\n            <span class=\"type\">ProjOnAccTrans</span> <span class=\"var\">line</span>;\n            <span class=\"kw\">select firstonly forupdate</span> <span class=\"var\">line</span>\n                <span class=\"kw\">where</span> <span class=\"var\">line</span>.RecId == <span class=\"var\">commit</span>.onAccTransRecId;\n            <span class=\"var\">line</span>.IsMilestoneComplete = <span class=\"var\">commit</span>.markAsCompleted;\n            <span class=\"var\">line</span>.<span class=\"func\">update</span>();\n        }\n        <span class=\"kw\">else if</span> (<span class=\"var\">commit</span>.lineType == <span class=\"type\">PSAContractLineType</span>::UOD)\n        {\n            <span class=\"type\">PSAContractLineItems</span> <span class=\"var\">line</span>;\n            <span class=\"kw\">select firstonly</span> <span class=\"var\">line</span>\n                <span class=\"kw\">where</span> <span class=\"var\">line</span>.RecId == <span class=\"func\">str2Int64</span>(<span class=\"var\">commit</span>.onAccTransRecId);\n\n            <span class=\"type\">PSAContractLineItemsServer</span>::<span class=\"func\">updateUODUnits</span>(<span class=\"var\">line</span>, <span class=\"var\">commit</span>.unitsReady);\n            <span class=\"type\">APV_PSAContractStatusService</span>::<span class=\"func\">createUnitDeliveredTransaction</span>(<span class=\"var\">line</span>, <span class=\"var\">commit</span>.unitsReady);\n        }\n    }\n    <span class=\"kw\">ttscommit</span>;\n}\n\n<span class=\"kw\">private static void</span> <span class=\"func\">createUnitDeliveredTransaction</span>(\n    <span class=\"type\">PSAContractLineItems</span> <span class=\"var\">_line</span>,\n    <span class=\"type\">Qty</span>                  <span class=\"var\">_unitsReady</span>)\n{\n    <span class=\"comment\">// implementation not shown — inserts a delivery log record</span>\n}"
+              }
+            ],
+            "callouts": [
+              {
+                "type": "why",
+                "title": "Why both writes share one transaction",
+                "body": "<code>updateUODUnits</code> and <code>createUnitDeliveredTransaction</code> are two sides of the same business operation. If the delivery transaction insert fails after the units update succeeds, the contract line would show updated units with no corresponding log record — a data integrity problem. A single <code>ttsbegin/ttscommit</code> wrapping both ensures they either both commit or both roll back."
+              },
+              {
+                "type": "how",
+                "title": "Why the creation is a private method, not inline",
+                "body": "Extracting <code>createUnitDeliveredTransaction</code> as a named private method keeps the commit loop body at the right abstraction level — it reads as a sequence of named operations rather than as a block of field-setting code. The private method can also be unit-tested in isolation by calling it directly within a ttsbegin/ttsabort test harness."
+              },
+              {
+                "type": "danger",
+                "title": "🚨 Never open a nested ttsbegin inside the service",
+                "body": "X++ transaction nesting increments an internal counter — a nested <code>ttsbegin</code> does not start a new transaction, and a nested <code>ttsabort</code> marks the outer transaction for rollback even if caught. Any helper called from inside the commit loop must not open its own <code>ttsbegin</code>. The service owns the transaction boundary exclusively."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Pattern — selectionChanged() driving column-level edit availability",
+        "body": "When a grid contains heterogeneous row types and some columns are only editable for one type, use selectionChanged() on the data source to update the allowEdit state of those controls whenever the cursor moves to a different row.",
+        "subSections": [
+          {
+            "codeBlocks": [
+              {
+                "label": "X++ — selectionChanged() toggling edit methods by line type",
+                "code": "<span class=\"kw\">public void</span> <span class=\"func\">selectionChanged</span>(\n    <span class=\"type\">AnyType</span> <span class=\"var\">_firstSelection</span>,\n    <span class=\"type\">AnyType</span> <span class=\"var\">_lastSelection</span>,\n    <span class=\"type\">SelectionModeEnum</span> <span class=\"var\">_mode</span>)\n{\n    <span class=\"kw\">super</span>(<span class=\"var\">_firstSelection</span>, <span class=\"var\">_lastSelection</span>, <span class=\"var\">_mode</span>);\n\n    <span class=\"type\">APV_ContractLinesTmp</span> <span class=\"var\">currentLine</span> = <span class=\"var\">element</span>.<span class=\"func\">APV_ContractLinesTmp_ds</span>.<span class=\"func\">cursor</span>();\n    <span class=\"kw\">boolean</span> <span class=\"var\">isUOD</span>       = currentLine.LineType == <span class=\"type\">PSAContractLineType</span>::UOD;\n    <span class=\"kw\">boolean</span> <span class=\"var\">isMilestone</span> = currentLine.LineType == <span class=\"type\">PSAContractLineType</span>::Milestone;\n\n    <span class=\"comment\">// Units column — only editable on UOD lines</span>\n    <span class=\"var\">element</span>.<span class=\"func\">design</span>().<span class=\"func\">controlName</span>(<span class=\"str\">'unitsReadyForInvoicingShow'</span>).<span class=\"func\">allowEdit</span>(<span class=\"var\">isUOD</span>);\n\n    <span class=\"comment\">// Complete checkbox — only editable on milestone lines</span>\n    <span class=\"var\">element</span>.<span class=\"func\">design</span>().<span class=\"func\">controlName</span>(<span class=\"str\">'markAsCompletedShow'</span>).<span class=\"func\">allowEdit</span>(<span class=\"var\">isMilestone</span>);\n}"
+              }
+            ],
+            "callouts": [
+              {
+                "type": "why",
+                "title": "What this achieves",
+                "body": "A user navigating the grid cannot enter a units value on a milestone row or toggle the completion checkbox on a UOD row — the cells are visually locked at cursor time. This removes the need to validate line type inside every edit method write branch (though the guard should still be there as a safety net)."
+              },
+              {
+                "type": "how",
+                "title": "Why allowEdit on the control and not on the column",
+                "body": "<code>allowEdit</code> set on the control at runtime overrides the AOT design property for the current form session. Setting it per-row in <code>selectionChanged()</code> is the correct pattern for row-conditional editability. Setting it at column level would lock or unlock the entire column, not individual rows."
+              },
+              {
+                "type": "warn",
+                "title": "⚠️ Always call super() first in selectionChanged()",
+                "body": "Calling <code>super()</code> after the control updates causes the framework to reset the cursor before your code reads it, resulting in stale line type detection. Always call <code>super()</code> first, then read <code>cursor()</code>."
               }
             ]
           }
